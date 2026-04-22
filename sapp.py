@@ -22,8 +22,7 @@ class Timer(Digits):
         task_time = self.app.query_one("#tasklist", ListView).highlighted_child
         if isinstance(task_time, TaskItem):
             if task_time.task_time == self.total_time:
-                os.system("paplay /home/jvmain/python/tools/faaah.mp3 &")       
-
+                os.system("paplay /home/jacob/Downloads/faaah.mp3 &")
 
     def stop_timer(self):
         self.active_timer.stop()
@@ -122,7 +121,7 @@ class TaskApp(App):
         self.load_tasks()
         self.week_check()
         self.set_interval(10,self.save_tasks)
-        self.set_interval(2,self.update_graph)
+        self.set_interval(3,self.update_graph)
         self.query_one("#taskname").focus()
 
 
@@ -140,7 +139,7 @@ class TaskApp(App):
             else:
                 today  = int(datetime.today().day)
                 diff = today - int(self.true_data)
-            self.today += diff % 8 
+            self.today += diff % 7 
             if self.today >= 7:
                 self.today = 0
             self.daily_time[self.today] = 0
@@ -167,11 +166,11 @@ class TaskApp(App):
     def update_graph(self):
         plot = self.query_one("#daily_plot", PlotextPlot)
         plt = plot.plt
-        plt.clf()
-        plt.clear_data()
-        plt.plot(self.daily_time)
+        plt.clear_figure() 
+        plt.plot(self.daily_time, marker="dot", color="green")
         plt.ylabel("Minutes")
         plt.xlabel("Days")
+        plt.title("Weekly Progress")
         plot.refresh()
 
 
@@ -195,18 +194,25 @@ class TaskApp(App):
                 self.today = saved_data["today"]
                 self.true_data = saved_data["today_true"]
                 self.daily_time = saved_data["graph"]
+                
                 for name in saved_data["tasks"]:
                     if saved_data["tasks"][name][1] == True:
                         item = TaskItem(name,saved_data["tasks"][name][0],saved_data["tasks"][name][1],saved_data["tasks"][name][2])
-                        item.set_task()
                         self.query_one("#tasklist", ListView).append(item)
                     else:
                         item = TaskItem(name,saved_data["tasks"][name][0],saved_data["tasks"][name][1],saved_data["tasks"][name][2])
                         self.query_one("#tasklist", ListView).append(item)
                         item.set_task()
-
         except (FileNotFoundError, json.JSONDecodeError):
             self.notify("Error no task where loaded")
+        try:
+            with open("output.json", "r") as file:
+                log = json.load(file)
+                self.history_log = log
+        except (FileNotFoundError, json.JSONDecodeError):
+            self.notify("Error no task where loaded")
+            
+        
             
             
     def log_rating(self, rating):
@@ -225,6 +231,8 @@ class TaskApp(App):
                 "completed": selected.complete,
                 "rating": rating
             }
+            with open("output.json", "w") as file:
+                json.dump(self.history_log,file, indent=4)
 
 
     def save_tasks(self):
@@ -253,16 +261,16 @@ class TaskApp(App):
                 selected_item.task_time += 5
                 selected_item.query_one(Label).update(selected_item.refresh_label())
                 self.notify(f"Increased time for {selected_item.task_name}")
-                selected_item.complete = False
-                selected_item.set_task()
+
+
                 self.log_rating("Good")
                 return
             else:
                 selected_item.task_time += 10
                 selected_item.query_one(Label).update(selected_item.refresh_label())
                 self.notify(f"Increased time for {selected_item.task_name}")
-                selected_item.complete = False
-                selected_item.set_task()
+
+
                 self.log_rating("Good")
                 return
             
@@ -273,8 +281,7 @@ class TaskApp(App):
         selected_item = self.query_one("#tasklist",ListView).highlighted_child
         if isinstance(selected_item, TaskItem):
             self.notify(f"Keeping {selected_item.task_name} the same")
-            selected_item.complete = False
-            selected_item.set_task()
+
             self.log_rating("Okay")
             return
 
@@ -288,30 +295,29 @@ class TaskApp(App):
         if isinstance(selected_item, TaskItem):
             if selected_item.task_time <= 0:
                 self.notify(f"Task is already 0")
-                selected_item.complete = False
+
                 self.log_rating("Bad")
                 return
             else:
                 if selected_item.task_time > 70:
                     selected_item.task_time -= 5
                     selected_item.query_one(Label).update(selected_item.refresh_label())
-                    selected_item.complete = False
+
                     self.notify(f"Increased time for {selected_item.task_name}")
-                    selected_item.set_task()
+
                     self.log_rating("Bad")
                     return
                 else:
                     if selected_item.task_time <= 0:
                         self.notify(f"Task is already 0")
-                        selected_item.complete = False
-                        selected_item.set_task()
+
                         self.log_rating("Bad")
                     else:
                         selected_item.task_time -= 10
                         selected_item.query_one(Label).update(selected_item.refresh_label())
-                        selected_item.complete = False
+
                         self.notify(f"Decreased time for {selected_item.task_name}")
-                        selected_item.set_task()
+
                         self.log_rating("Bad")
                         return
 
